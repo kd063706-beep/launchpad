@@ -1,0 +1,109 @@
+/* ============================================================
+   LaunchPad — токены дизайн-системы
+   Палитра строго по иконке студии. Акцент один: #00F2FE.
+   ============================================================ */
+
+:root {
+  /* --- Цвет --- */
+  --bg: #0A0A0C;
+  --surface: #121216;
+  --surface-up: #16161B;
+  --line: #22222A;
+  --line-soft: #1A1A20;
+
+  --text: #FFFFFF;
+  --text-muted: #A1A1AA;
+  --text-dim: #6B6B76;
+
+  --accent: #00F2FE;
+  --accent-ink: #04161A;
+  --accent-glow: rgba(0, 242, 254, 0.35);
+  --accent-veil: rgba(0, 242, 254, 0.07);
+
+  /* --- Типографика --- */
+  --font-display: 'Unbounded', 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Consolas', ui-monospace, monospace;
+
+  --fs-mega: clamp(2.25rem, 8.5vw, 5.25rem);
+  --fs-h1: clamp(1.85rem, 4.2vw, 3.5rem);
+  --fs-h2: clamp(1.5rem, 3vw, 2.5rem);
+  --fs-h3: clamp(1.1rem, 1.7vw, 1.5rem);
+  --fs-lead: clamp(1rem, 1.35vw, 1.2rem);
+  --fs-body: 1rem;
+  --fs-sm: 0.875rem;
+  --fs-xs: 0.75rem;
+
+  --lh-tight: 1.04;
+  --lh-snug: 1.28;
+  --lh-body: 1.62;
+  --tr-tight: -0.03em;
+  --tr-wide: 0.16em;
+
+  /* --- Ритм и сетка --- */
+  --page-max: 1320px;
+  --gutter: clamp(1.25rem, 4vw, 3.5rem);
+  --section-y: clamp(3.75rem, 11vw, 10rem);
+  --header-h: 72px;
+
+  --sp-1: 0.25rem;
+  --sp-2: 0.5rem;
+  --sp-3: 0.75rem;
+  --sp-4: 1rem;
+  --sp-5: 1.5rem;
+  --sp-6: 2rem;
+  --sp-7: 3rem;
+  --sp-8: 4rem;
+  --sp-9: 6rem;
+
+  /* --- Форма --- */
+  --radius: 3px;
+  --radius-lg: 6px;
+  --border: 1px solid var(--line);
+  --border-accent: 1px solid var(--accent);
+
+  /* --- Движение --- */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --t-fast: 140ms;
+  --t-base: 260ms;
+  --t-slow: 520ms;
+
+  /* --- Микроинтеракции: тайминги и амплитуды --- */
+  --t-hover: 320ms;
+  --t-reveal: 720ms;
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --scale-hover: 1.02;
+  --scale-hover-strong: 1.05;
+  --lift-hover: -3px;
+  --arrow-shift: 5px;
+
+  /* --- Стекло (glassmorphism) --- */
+  --glass-bg: rgba(18, 18, 24, 0.55);
+  --glass-bg-strong: rgba(22, 22, 30, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-accent: rgba(0, 242, 254, 0.38);
+  --glass-blur: 12px;
+  --glass-saturate: 180%;
+
+  /* --- Фон: мягкие градиенты и ядро свечения --- */
+  --bg-deep: #060608;
+  --bg-mid: #0A0A0C;
+  --glow-core: rgba(0, 242, 254, 0.10);
+  --glow-halo: rgba(0, 242, 254, 0.045);
+  --glow-violet: rgba(120, 90, 255, 0.06);
+
+  /* --- Тени для hover --- */
+  --shadow-hover: 0 18px 40px -22px rgba(0, 0, 0, 0.9);
+  --shadow-hover-glow: 0 18px 40px -22px rgba(0, 0, 0, 0.9), 0 0 26px -6px rgba(0, 242, 254, 0.28);
+
+  /* --- Тени (свечение — только для акцента) --- */
+  --glow-sm: 0 0 14px rgba(0, 242, 254, 0.28);
+  --glow-md: 0 0 28px rgba(0, 242, 254, 0.32);
+  --shadow-panel: 0 24px 60px -32px rgba(0, 0, 0, 0.9);
+
+  /* --- Слои --- */
+  --z-base: 1;
+  --z-sticky: 100;
+  --z-overlay: 200;
+}

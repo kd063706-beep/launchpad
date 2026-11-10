@@ -1,0 +1,454 @@
+/* ============================================================
+   LaunchPad — motion & depth
+   Полировка: переходы скролла, hover-микроинтеракции,
+   glassmorphism и объёмный фон.
+   Всё построено на transform / opacity / filter (без layout shift).
+   ============================================================ */
+
+/* ============================================================
+   1. ФОН: мягкие градиенты и diffuse-свечения
+   Фоновый слой фиксирован, не участвует в скролл-репейнте содержимого.
+   ============================================================ */
+
+.bg-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* Многослойный фон: глубокая подложка + мягкие градиенты */
+  background:
+    radial-gradient(120% 90% at 82% -10%, var(--glow-core) 0%, transparent 55%),
+    radial-gradient(90% 70% at 10% 8%, var(--glow-violet) 0%, transparent 60%),
+    radial-gradient(140% 120% at 50% 120%, var(--glow-halo) 0%, transparent 65%),
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-mid) 42%, var(--bg-deep) 100%);
+}
+
+/* Диффузные световые пятна — «дыхание» студии */
+.bg-atmosphere__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+  animation: orb-drift 22s var(--ease) infinite alternate;
+}
+
+.bg-atmosphere__orb--a {
+  width: 46vmax;
+  height: 46vmax;
+  top: -16vmax;
+  right: -12vmax;
+  background: radial-gradient(circle, var(--glow-core) 0%, transparent 68%);
+}
+
+.bg-atmosphere__orb--b {
+  width: 40vmax;
+  height: 40vmax;
+  bottom: -14vmax;
+  left: -10vmax;
+  background: radial-gradient(circle, var(--glow-violet) 0%, transparent 70%);
+  animation-duration: 28s;
+  animation-direction: alternate-reverse;
+}
+
+/* Тонкая техническая сетка поверх градиентов — глубина без шума */
+.bg-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(120% 100% at 50% 0%, #000 0%, transparent 78%);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 0%, #000 0%, transparent 78%);
+}
+
+@keyframes orb-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-3vmax, 4vmax, 0) scale(1.12); }
+}
+
+/* Контент всегда выше фонового слоя */
+body > *:not(.bg-atmosphere):not(.skip-link) {
+  position: relative;
+  z-index: var(--z-base);
+}
+
+/* ============================================================
+   2. СКРОЛЛ-АНИМАЦИИ
+   База (.reveal) уже определена в base.css. Здесь — варианты
+   направления и каскад для сеток. Управляет всем
+   IntersectionObserver в main.js.
+   ============================================================ */
+
+/* Направления появления */
+.reveal--left  { transform: translate3d(-28px, 0, 0); }
+.reveal--right { transform: translate3d(28px, 0, 0); }
+.reveal--sm    { transform: translate3d(0, 10px, 0); }
+.reveal--scale { transform: translate3d(0, 22px, 0) scale(0.965); }
+
+.reveal--left.is-in,
+.reveal--right.is-in,
+.reveal--sm.is-in,
+.reveal--scale.is-in {
+  transform: none;
+}
+
+.reveal--left,
+.reveal--right,
+.reveal--sm,
+.reveal--scale {
+  transition-duration: var(--t-reveal);
+  transition-timing-function: var(--ease-out);
+}
+
+/* Каскад для сеток: карточки въезжают одна за другой */
+.stack-grid > .reveal:nth-child(2) { --reveal-delay: 90ms; }
+.stack-grid > .reveal:nth-child(3) { --reveal-delay: 180ms; }
+.stack-grid > .reveal:nth-child(4) { --reveal-delay: 270ms; }
+
+.steps > .reveal:nth-child(2) { --reveal-delay: 90ms; }
+.steps > .reveal:nth-child(3) { --reveal-delay: 180ms; }
+.steps > .reveal:nth-child(4) { --reveal-delay: 270ms; }
+
+.pricing > .reveal:nth-child(even) { --reveal-delay: 70ms; }
+.pricing > .reveal:nth-child(3n)   { --reveal-delay: 140ms; }
+
+/* После появления карточки больше не держим слой в памяти GPU */
+.reveal.is-in {
+  will-change: auto;
+}
+
+/* Индикатор прогресса чтения — тонкая линия под шапкой */
+.scroll-progress {
+  position: fixed;
+  top: calc(var(--header-h) + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: calc(var(--z-sticky) + 1);
+  background: linear-gradient(90deg, var(--accent) 0%, rgba(0, 242, 254, 0.35) 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  box-shadow: var(--glow-sm);
+  will-change: transform;
+  pointer-events: none;
+}
+
+/* Кнопка «наверх» с плавным появлением */
+.to-top {
+  position: fixed;
+  right: max(var(--gutter), env(safe-area-inset-right));
+  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  z-index: var(--z-sticky);
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--glass-border-accent);
+  border-radius: var(--radius);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color: var(--accent);
+  opacity: 0;
+  transform: translate3d(0, 14px, 0) scale(0.92);
+  pointer-events: none;
+  transition:
+    opacity var(--t-base) var(--ease-out),
+    transform var(--t-base) var(--ease-spring),
+    box-shadow var(--t-hover) var(--ease-out),
+    border-color var(--t-hover) var(--ease-out);
+}
+
+.to-top.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  pointer-events: auto;
+}
+
+.to-top:hover {
+  transform: translate3d(0, -3px, 0) scale(1.05);
+  box-shadow: var(--shadow-hover-glow);
+}
+
+/* ============================================================
+   3. ШАПКА: frosted glass + мягкая нижняя граница
+   ============================================================ */
+
+.site-header {
+  background: rgba(10, 10, 12, 0.55);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+.site-header.is-stuck {
+  background: rgba(10, 10, 12, 0.72);
+  border-bottom-color: var(--glass-border);
+  box-shadow: 0 10px 34px -26px rgba(0, 0, 0, 0.95);
+}
+
+/* Браузеры без backdrop-filter: усиливаем фон, чтобы текст читался */
+@supports not ((backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px))) {
+  .site-header,
+  .site-header.is-stuck {
+    background: rgba(10, 10, 12, 0.94);
+  }
+}
+
+/* ============================================================
+   4. HOVER-МИКРОИНТЕРАКЦИИ
+   Карточки: подъём + масштаб, тень, акцентная граница
+   и spotlight-подсветка под курсором (координаты ставит JS).
+   ============================================================ */
+
+.glass-card,
+.step,
+.factor,
+.stack-category,
+.pricing__foot,
+.service {
+  position: relative;
+  isolation: isolate;
+  transition:
+    transform var(--t-hover) var(--ease-out),
+    background-color var(--t-hover) var(--ease-out),
+    border-color var(--t-hover) var(--ease-out),
+    box-shadow var(--t-hover) var(--ease-out);
+}
+
+/* Spotlight: мягкий радиальный отблеск, следующий за курсором */
+.glass-card::after,
+.step::after,
+.factor::after,
+.stack-category::after,
+.pricing__foot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    240px circle at var(--spot-x, 50%) var(--spot-y, 0%),
+    rgba(0, 242, 254, 0.13) 0%,
+    transparent 62%
+  );
+  transition: opacity var(--t-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover,
+  .step:hover,
+  .factor:hover,
+  .stack-category:hover,
+  .pricing__foot:hover {
+    transform: translate3d(0, var(--lift-hover), 0) scale(var(--scale-hover));
+    border-color: var(--glass-border-accent);
+    box-shadow: var(--shadow-hover-glow);
+    background: var(--glass-bg-strong);
+    z-index: 2;
+  }
+
+  .glass-card:hover::after,
+  .step:hover::after,
+  .factor:hover::after,
+  .stack-category:hover::after,
+  .pricing__foot:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Номера и служебные подписи подсвечиваются акцентом */
+.step:hover .step__no,
+.factor:hover .factor__no,
+.stack-category:hover .stack-category__no {
+  color: var(--accent);
+}
+
+/* Кнопки: масштаб + акцентная тень */
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover {
+    transform: translate3d(0, -2px, 0) scale(var(--scale-hover));
+    box-shadow: var(--shadow-hover-glow);
+  }
+
+  .btn--primary:hover {
+    transform: translate3d(0, -2px, 0) scale(var(--scale-hover-strong));
+  }
+
+  .btn:active {
+    transform: translate3d(0, 0, 0) scale(0.98);
+  }
+}
+
+/* Стрелки: диагональный сдвиг вверх-вправо на hover */
+.btn__arrow,
+.work__arrow svg,
+.footer__top-link svg,
+.contact a svg,
+a > svg[aria-hidden="true"] {
+  transition: transform var(--t-hover) var(--ease-spring);
+}
+
+.btn:hover .btn__arrow {
+  transform: translate3d(var(--arrow-shift), calc(var(--arrow-shift) * -1), 0);
+}
+
+/* Стрелка «наверх» едет вверх */
+.footer__top-link:hover svg {
+  transform: translate3d(0, -4px, 0);
+}
+
+/* Карточка работы: диагональный уход стрелки + подсветка */
+.work__arrow {
+  transition:
+    transform var(--t-hover) var(--ease-spring),
+    color var(--t-hover) var(--ease-out),
+    border-color var(--t-hover) var(--ease-out),
+    box-shadow var(--t-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .work:hover .work__arrow {
+    transform: translate3d(4px, -4px, 0);
+    color: var(--accent);
+    border-color: var(--glass-border-accent);
+    box-shadow: var(--glow-sm);
+  }
+}
+
+/* Текстовые ссылки контактов и подвала — мягкий сдвиг */
+.contact__socials a,
+.footer__list a,
+.header-social__link {
+  transition:
+    color var(--t-base) var(--ease-out),
+    transform var(--t-base) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .contact__socials a:hover,
+  .footer__list a:hover {
+    transform: translateX(3px);
+  }
+}
+
+/* Пункты меню: подчёркивание выезжает слева-направо */
+.nav__link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Аккордеон услуг: сдвиг строки и поворот индикатора */
+.service__head {
+  transition:
+    transform var(--t-hover) var(--ease-out),
+    color var(--t-base) var(--ease-out);
+}
+
+.service__toggle {
+  transition: transform var(--t-base) var(--ease-spring);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .service__head:hover {
+    transform: translateX(4px);
+  }
+}
+
+/* Теги: подъём + акцентная рамка */
+.tag {
+  transition:
+    transform var(--t-hover) var(--ease-out),
+    color var(--t-hover) var(--ease-out),
+    border-color var(--t-hover) var(--ease-out),
+    background-color var(--t-hover) var(--ease-out),
+    box-shadow var(--t-hover) var(--ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tag:hover {
+    transform: translate3d(0, -2px, 0);
+    color: var(--accent);
+    border-color: var(--glass-border-accent);
+    background: var(--glass-bg);
+    box-shadow: var(--glow-sm);
+  }
+
+  .hero__stack span:hover {
+    transform: translate3d(0, -2px, 0) scale(var(--scale-hover));
+  }
+}
+
+/* ============================================================
+   5. АДАПТАЦИЯ И ДОСТУПНОСТЬ
+   Тяжёлые эффекты (blur-орбы, spotlight, масштаб) отключаем
+   на тач-устройствах и при предпочтении уменьшенного движения.
+   ============================================================ */
+
+/* На мобильных «дыхание» орбов и блюр дороже FPS — упрощаем */
+@media (max-width: 768px) {
+  .bg-atmosphere__orb {
+    animation: none;
+    filter: blur(52px);
+    opacity: 0.42;
+  }
+
+  .bg-atmosphere::after {
+    background-size: 48px 48px;
+  }
+
+  .glass-card,
+  .step,
+  .factor,
+  .stack-category,
+  .pricing__foot {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--glass-bg-strong);
+  }
+}
+
+/* Без точного указателя hover-эффекты бессмысленны */
+@media (hover: none), (pointer: coarse) {
+  .glass-card::after,
+  .step::after,
+  .factor::after,
+  .stack-category::after,
+  .pricing__foot::after {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bg-atmosphere__orb {
+    animation: none;
+  }
+
+  .reveal--left,
+  .reveal--right,
+  .reveal--sm,
+  .reveal--scale {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .scroll-progress,
+  .to-top {
+    transition: none;
+  }
+
+  .step:hover,
+  .factor:hover,
+  .stack-category:hover,
+  .pricing__foot:hover,
+  .glass-card:hover,
+  .btn:hover {
+    transform: none;
+  }
+}
+
